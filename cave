@@ -1,0 +1,145 @@
+import javax.swing.*;
+import java.awt.*;
+import java.awt.event.ActionEvent;
+import java.awt.event.ActionListener;
+import java.util.Random;
+
+class CaveCell {
+    int row, col, depth;
+    boolean isPartOfEscape;
+
+    public CaveCell(int row, int col, int depth) {
+        this.row = row;
+        this.col = col;
+        this.depth = depth;
+        this.isPartOfEscape = false;
+    }
+}
+
+class Cave {
+    private static final int SIZE = 10;
+    private CaveCell[][] grid;
+    private Random random;
+
+    public Cave() {
+        grid = new CaveCell[SIZE][SIZE];
+        random = new Random();
+        generateCave();
+    }
+
+    private void generateCave() {
+        for (int i = 0; i < SIZE; i++) {
+            for (int j = 0; j < SIZE; j++) {
+                grid[i][j] = new CaveCell(i, j, random.nextInt(10) + 1);
+            }
+        }
+    }
+
+    public boolean findEscapeRoute(int depth, int air, int row, int col) {
+        if (row >= SIZE || col >= SIZE || air <= 0 || grid[row][col].depth > depth) {
+            return false;
+        }
+        if (row == SIZE - 1 && col == SIZE - 1) {
+            grid[row][col].isPartOfEscape = true;
+            return true;
+        }
+        if (findEscapeRoute(depth, air - 1, row + 1, col) || findEscapeRoute(depth, air - 1, row, col + 1)) {
+            grid[row][col].isPartOfEscape = true;
+            return true;
+        }
+        return false;
+    }
+
+    public void resetEscapeRoute() {
+        for (int i = 0; i < SIZE; i++) {
+            for (int j = 0; j < SIZE; j++) {
+                grid[i][j].isPartOfEscape = false;
+            }
+        }
+    }
+
+    public CaveCell[][] getGrid() {
+        return grid;
+    }
+}
+
+class CavePanel extends JPanel {
+    private static final int CELL_SIZE = 50;
+    private Cave cave;
+
+    public CavePanel(Cave cave) {
+        this.cave = cave;
+        setPreferredSize(new Dimension(CELL_SIZE * 10, CELL_SIZE * 10));
+    }
+
+    @Override
+    protected void paintComponent(Graphics g) {
+        super.paintComponent(g);
+        CaveCell[][] grid = cave.getGrid();
+        for (int i = 0; i < 10; i++) {
+            for (int j = 0; j < 10; j++) {
+                CaveCell cell = grid[i][j];
+                g.setColor(cell.isPartOfEscape ? new Color(242, 0, 0) : new Color(0, 0, 255 - (cell.depth * 20)));
+                g.fillRect(j * CELL_SIZE, i * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+                g.setColor(Color.BLACK);
+                g.drawRect(j * CELL_SIZE, i * CELL_SIZE, CELL_SIZE, CELL_SIZE);
+            }
+        }
+    }
+}
+
+public class CaveDiverApp extends JFrame {
+    private Cave cave;
+    private CavePanel cavePanel;
+    private JTextField depthField;
+
+    public CaveDiverApp() {
+        setTitle("Cave Diver");
+        setDefaultCloseOperation(JFrame.EXIT_ON_CLOSE);
+        setLayout(new BorderLayout());
+
+        cave = new Cave();
+        cavePanel = new CavePanel(cave);
+        add(cavePanel, BorderLayout.CENTER);
+
+        JPanel controlPanel = new JPanel();
+        controlPanel.add(new JLabel("Diver Depth: "));
+        depthField = new JTextField(5);
+        controlPanel.add(depthField);
+        JButton escapeButton = new JButton("Escape");
+        JButton newCaveButton = new JButton("New Cave");
+        controlPanel.add(escapeButton);
+        controlPanel.add(newCaveButton);
+        add(controlPanel, BorderLayout.SOUTH);
+
+        escapeButton.addActionListener(e -> {
+            try {
+                int depth = Integer.parseInt(depthField.getText());
+                cave.resetEscapeRoute();
+                if (cave.findEscapeRoute(depth, 20, 0, 0)) {
+                    cavePanel.repaint();
+                } else {
+                    JOptionPane.showMessageDialog(this, "No escape route found.");
+                }
+            } catch (NumberFormatException ex) {
+                JOptionPane.showMessageDialog(this, "Enter a valid depth.");
+            }
+        });
+
+        newCaveButton.addActionListener(e -> {
+            cave = new Cave();
+            cavePanel = new CavePanel(cave);
+            add(cavePanel, BorderLayout.CENTER);
+            revalidate();
+            repaint();
+        });
+
+        pack();
+        setLocationRelativeTo(null);
+        setVisible(true);
+    }
+
+    public static void main(String[] args) {
+        SwingUtilities.invokeLater(CaveDiverApp::new);
+    }
+}
